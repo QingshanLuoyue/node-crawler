@@ -2,20 +2,22 @@ var https = require('https');
 var fs = require('fs');
 var cheerio = require('cheerio');
 var xlsx = require('node-xlsx');
-var i = 1;
+var i = 1; // 控制获取的页数，每一页20条数据
+var maxpage = 1; // 控制可获取的最大页数
+var maxSingleMsgNub = 5;  // 控制可获取的数据条数
 var news_item = [];
 var allUrl = [];
-// var filename = 'android-langrensha'
-var filename = 'ios-langrensha'
 
-// 安卓基本信息
-// var androidBase = encodeURI('https://aso100.com/andapp/baseinfo/appid/2232458')
-// 安卓总下载量
-// var androidDown = encodeURI('https://aso100.com/andapp/downTotal/appid/2232458')
+// 请求安卓数据
+var filename = 'android-langrensha'
+// 请求ios数据
+// var filename = 'ios-langrensha';
 
-var androidurl = encodeURI('https://aso100.com/search/searchAndroidMore?page=1&search=狼人杀&date=2017-05-23')
-
-var iosurl= encodeURI('https://aso100.com/search/searchMore?page=1&device=iphone&search=狼人杀&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
+if (filename == 'android-langrensha') {
+	var initialurl = encodeURI('https://aso100.com/search/searchAndroidMore?page=1&search=狼人杀&date=2017-05-23')
+} else if (filename == 'ios-langrensha') {
+	var initialurl= encodeURI('https://aso100.com/search/searchMore?page=1&device=iphone&search=狼人杀&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
+}
 
 // 加了一层封装
 function fetchPage(url) {
@@ -65,19 +67,18 @@ function startRequest(url) {
 			}
 
 			console.log('news_item = ',news_item)
-			if (i <= 1 && html != '') {
+			if (i < maxpage && html != '') {
 				console.log('下一次')
 				// 10秒执行一次
 				setTimeout(function(){
 					fetchPage(nextLink);
-				}, 10000)
+				}, 20000)
 			} else {
 				// 3秒后执行
 				setTimeout(function(){
-					// savedContent(news_item);
 					// 获取基础信息
 					getBaseInfo()
-				}, 6000)
+				}, 20000)
 			}
 		})
 	}).on('error', function(err) {
@@ -89,7 +90,7 @@ function startRequest(url) {
 var count = 0;
 function getBaseInfo() {
 	console.log('filename', filename)
-	var len = news_item.length;
+	var len = maxSingleMsgNub ? maxSingleMsgNub : news_item.length;
 	var baseTitle = '', author = '', bundleId = '', appId = '';
 
 	if (filename == 'android-langrensha') {
@@ -159,7 +160,11 @@ function getBaseInfo() {
 			console.log('author', author)
 			console.log('bundleId', bundleId)
 			console.log('appId', appId)
-			news_item[count].push(baseTitle, author, bundleId, appId)
+			if (filename == 'android-langrensha') {
+				news_item[count].push(baseTitle, author, bundleId)
+			} else if (filename == 'ios-langrensha') {
+				news_item[count].push(baseTitle, author, bundleId, appId)
+			}
 			console.log('getBaseInfo后news_item = ',news_item)
 			
 			// 请求下载量url
@@ -174,12 +179,12 @@ function getBaseInfo() {
 			// 获取下载量
 			if (!downTotalUrl) {
 				writeToexcel(news_item);
-				if (count < 4) {
+				if (count < len - 1) {
 					count++;
 					// 10秒执行一次
 					setTimeout(function(){
 						getBaseInfo(allUrl[count])
-					}, 10000)
+					}, 20000)
 					// 写下数据了
 				} else {
 					var x = '';
@@ -195,15 +200,15 @@ function getBaseInfo() {
 				}
 			} else {
 				setTimeout(function(){
-					getDownTotal(downTotalUrl)
-				}, 6000)
+					getDownTotal(downTotalUrl, len)
+				}, 20000)
 			}
 		})
 	})
 }
 
 // 获取下载量
-function getDownTotal(downTotalUrl) {
+function getDownTotal(downTotalUrl, len) {
 	https.get(downTotalUrl, function(res) {
 		var downTotalNum = '';
 		res.setEncoding('utf-8');
@@ -223,13 +228,12 @@ function getDownTotal(downTotalUrl) {
 			news_item[count].push(totalNum)
 			console.log('getDownTotal后news_item = ',news_item)
 			writeToexcel(news_item);
-			if (count < 4) {
+			if (count < len - 1) {
 				count++;
 				// 10秒执行一次
 				setTimeout(function(){
 					getBaseInfo(allUrl[count])
-				}, 10000)
-				// 写下数据了
+				}, 20000)
 			} else {
 				var x = '';
 				console.log('写进html了')
@@ -252,21 +256,25 @@ function writeToexcel(resData) {
 	// var excelObj = obj[0].data;
 	// console.log(excelObj);
 
-	var finalRes = [['序号', '产品名称', '公司', 'bundleID', 'appId', '下载量' ]].concat(resData);
+	if (filename == 'android-langrensha') {
+		var finalRes = [['序号', '产品名称', '公司', 'bundleID', '下载量' ]].concat(resData);
+	} else if (filename == 'ios-langrensha') {
+		var finalRes = [['序号', '产品名称', '公司', 'bundleID', 'appId', '下载量' ]].concat(resData);
+	}
 	console.log(finalRes)
 
 	var buffer = xlsx.build([
 	    {
 	        name:'sheet1',
 	        data:finalRes
-	    }        
+	    }
 	]);
 	console.log('写进excel了')
 	//将文件内容插入新的文件中
 	fs.writeFileSync('langrensha.xlsx',buffer,{'flag':'w'});
 }
-// fetchPage(androidurl, 'android-langrensha');
-fetchPage(iosurl);
+
+fetchPage(initialurl);
 
 
 
