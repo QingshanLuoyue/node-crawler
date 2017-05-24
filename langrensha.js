@@ -2,9 +2,9 @@ var https = require('https');
 var fs = require('fs');
 var cheerio = require('cheerio');
 var xlsx = require('node-xlsx');
-var i = 1; // 控制获取的页数，每一页20条数据
+var i = 1; // 控制获取的当前页数，每一页20条数据
 var maxpage = 1; // 控制可获取的最大页数
-var maxSingleMsgNub = 5;  // 控制可获取的数据条数
+var maxSingleMsgNub = 8;  // 控制可获取的数据条数
 var news_item = [];
 var allUrl = [];
 
@@ -37,23 +37,25 @@ function startRequest(url) {
 		res.on('end', function() {
 			var $ = cheerio.load(html);
 			$('.media').each(function(){
-				// var app_title = $(this).find('.media-heading a').text().trim();
-				// if (app_title == '') { app_title = ' '}
-				// var app_title = $(this).find('.media-heading a').text().trim().split('、')[1];
-
 				// 序号
 				var rankNum = $(this).find('.media-heading a').text().trim().split('、')[0]
 				if (rankNum == '') { rankNum = ' '}
+				
+				// 产品名称
+				// var app_title = $(this).find('.media-heading a').text().trim();
+				var app_title = $(this).find('.media-heading a').text().trim().split('、')[1];
+				if (app_title == '') { app_title = ' '}
 
+				// 开发商／公司
+				var app_author = $(this).find('.media-auther').text().trim();
+				if (app_author == '') { app_author = ' '}
+				
 				// 获取详细信息的url
 				var baseinfoUrl = 'https://aso100.com' + $(this).find('.media-heading a').attr('href');
 				if (baseinfoUrl == '') { baseinfoUrl = ' '}
 
-				// var app_author = $(this).find('.media-auther').text().trim();
-				// if (app_author == '') { app_author = ' '}
-
 				// var simple_item = [rankNum, app_title, app_author, baseinfoUrl]
-				var simple_item = [rankNum]
+				var simple_item = [rankNum, app_title, app_author]
 				news_item.push(simple_item)
 				allUrl.push(baseinfoUrl)
 			})
@@ -114,16 +116,13 @@ function getBaseInfo() {
 			var $$ = cheerio.load(baseinfo);
 			// console.log('baseinfo = ', baseinfo)
 			// 产品名称
-			baseTitle = $$('.container-appinfo').find('.appinfo-title').text().trim();
-			if (baseTitle == '') { baseTitle = ' '}
+			// baseTitle = $$('.container-appinfo').find('.appinfo-title').text().trim();
+			// if (baseTitle == '') { baseTitle = ' '}
 
 			if (filename == 'android-langrensha') {
 				$$('.container-appinfo').find('.appinfo-auther').each(function(){
 					var nameP = $$(this).find('.name').text().trim();
-					if (nameP.indexOf('开发商') > -1) {
-						// 开发商
-						author = $$(this).find('.content').text().trim();
-					} else if (nameP.indexOf('Bundle ID') > -1) {
+					if (nameP.indexOf('Bundle ID') > -1) {
 						// bundleId
 						bundleId = $$(this).find('.content').text().trim();
 					}
@@ -131,10 +130,7 @@ function getBaseInfo() {
 			} else if (filename == 'ios-langrensha') {
 				$$('.container-appinfo').find('.appinfo-auther').each(function(){
 					var nameP = $$(this).find('.name').text().trim();
-					if (nameP.indexOf('开发商') > -1) {
-						// 开发商
-						author = $$(this).find('.content').text().trim();
-					} else if (nameP.indexOf('App ID') > -1) {
+					if (nameP.indexOf('App ID') > -1) {
 						// AppId
 						appId = $$(this).find('.content a').text().trim();
 					}
@@ -147,8 +143,8 @@ function getBaseInfo() {
 					}
 				})
 			}
-			// 开发商
-			if (author == '') { author = ' '}
+			// 开发商／公司
+			// if (author == '') { author = ' '}
 
 			// bundleId
 			if (bundleId == '') { bundleId = ' '}
@@ -156,14 +152,14 @@ function getBaseInfo() {
 			// AppId
 			if (appId == '') { appId = ' '}
 
-			console.log('baseTitle', baseTitle)
-			console.log('author', author)
+			// console.log('baseTitle', baseTitle)
+			// console.log('author', author)
 			console.log('bundleId', bundleId)
 			console.log('appId', appId)
 			if (filename == 'android-langrensha') {
-				news_item[count].push(baseTitle, author, bundleId)
+				news_item[count].push(bundleId)
 			} else if (filename == 'ios-langrensha') {
-				news_item[count].push(baseTitle, author, bundleId, appId)
+				news_item[count].push(bundleId, appId)
 			}
 			console.log('getBaseInfo后news_item = ',news_item)
 			

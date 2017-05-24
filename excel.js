@@ -7,7 +7,8 @@ var excelObj = obj[0].data;
 console.log(excelObj);
 
 var data = [
-	['序号', 'bundleID', '产品名称', '下载量', '开发厂商', '公司']
+	['序号', 'bundleID', '产品名称', '下载量', '开发厂商', '公司'],
+	['序号', 'bundleID', '产品名称', '下载量', null, null, '公司']
 ];
 // for(var i in excelObj){
 //     var arr=[];
