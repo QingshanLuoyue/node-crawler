@@ -1,0 +1,25 @@
+{
+  "name": "node-crawler",
+  "version": "1.0.0",
+  "description": "这是一个node爬虫实践",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QingshanLuoyue/node-crawler.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/QingshanLuoyue/node-crawler/issues"
+  },
+  "homepage": "https://github.com/QingshanLuoyue/node-crawler#readme",
+  "devDependencies": {
+    "cheerio": "^0.22.0",
+    "https": "^1.0.0",
+    "node-xlsx": "^0.7.4",
+    "request": "^2.81.0"
+  }
+}
