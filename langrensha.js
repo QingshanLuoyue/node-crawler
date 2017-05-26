@@ -2,11 +2,40 @@ var https = require('https');
 var fs = require('fs');
 var cheerio = require('cheerio');
 var xlsx = require('node-xlsx');
-var i = 1; // 控制获取的当前页数，每一页20条数据
-var maxpage = 1; // 控制可获取的最大页数
-var maxSingleMsgNub = 8;  // 控制可获取的数据条数
-var news_item = [];
-var allUrl = [];
+
+var maxpage = 10; // 控制可获取的最大页数
+var maxSingleMsgNub = 100;  // 控制可获取的数据条数
+var waitTime = 10000;  // 每一次请求的等待时间
+// writeToTxt(1, 0, '棋牌')
+var searchWord = '五子棋';  // 搜索关键字
+var compareWord = readFromTxt().word ? readFromTxt().word : '狼人杀';
+if (compareWord != searchWord) {
+	writeToTxt(1, 0, searchWord);
+}
+var i = readFromTxt() ? readFromTxt().i : 1; // 控制获取的当前页数，每一页20条数据
+var count = readFromTxt() ? readFromTxt().count : 0;  // 从本程序执行开始获取的new_item的序号
+
+// writeToTxt(i, count)
+// console.log(i)
+// console.log(count)
+console.log('readFromTxt = ', readFromTxt())
+
+
+// 获取的结果数据集合
+// var news_item = [];
+var obj = xlsx.parse(__dirname + '/langrensha.xlsx');
+var excelObj = obj[0].data;
+if (excelObj) {
+	excelObj.splice(0,1)
+	var news_item = excelObj.splice(0, count);
+	for (var k = 0; k < news_item.length; k++) {
+		news_item[k].unshift(' ');
+	}
+} else {
+	var news_item = [];
+}
+// console.log('news_item = ', news_item);
+// console.log('excelObj = ', excelObj);
 
 // 请求安卓数据
 var filename = 'android-langrensha'
@@ -14,9 +43,10 @@ var filename = 'android-langrensha'
 // var filename = 'ios-langrensha';
 
 if (filename == 'android-langrensha') {
-	var initialurl = encodeURI('https://aso100.com/search/searchAndroidMore?page=1&search=狼人杀&date=2017-05-23')
+	https://aso100.com/search/searchAndroidMore?page=2&search=%E7%8B%BC%E4%BA%BA&date=2017-05-26
+	var initialurl = encodeURI('https://aso100.com/search/searchAndroidMore?page='+ i +'&search='+ searchWord +'&date=2017-05-25')
 } else if (filename == 'ios-langrensha') {
-	var initialurl= encodeURI('https://aso100.com/search/searchMore?page=1&device=iphone&search=狼人杀&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
+	var initialurl= encodeURI('https://aso100.com/search/searchMore?page='+ i +'&device=iphone&search='+ searchWord +'&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
 }
 
 // 加了一层封装
@@ -53,34 +83,23 @@ function startRequest(url) {
 				// 获取详细信息的url
 				var baseinfoUrl = 'https://aso100.com' + $(this).find('.media-heading a').attr('href');
 				if (baseinfoUrl == '') { baseinfoUrl = ' '}
-
-				// var simple_item = [rankNum, app_title, app_author, baseinfoUrl]
-				var simple_item = [rankNum, app_title, app_author]
-				news_item.push(simple_item)
-				allUrl.push(baseinfoUrl)
+				console.log('rankNum = ', rankNum)
+				console.log('count = ', count)
+				if (rankNum > count) {
+					// var simple_item = [rankNum, app_title, app_author, baseinfoUrl]
+					var simple_item = [baseinfoUrl, rankNum, app_title, app_author]
+					news_item.push(simple_item)
+				}
 			})
-			i = i + 1;
-			if (filename == 'android-langrensha') {
-				// 安卓请求地址
-				var nextLink = encodeURI('https://aso100.com/search/searchAndroidMore?page='+ i + '&search=狼人杀&date=2017-05-23');
-			} else if (filename == 'ios-langrensha') {
-				// ios请求地址
-				var nextLink = encodeURI('https://aso100.com/search/searchMore?page='+ i + '&device=iphone&search=狼人杀&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
-			}
 
 			console.log('news_item = ',news_item)
-			if (i < maxpage && html != '') {
-				console.log('下一次')
-				// 10秒执行一次
-				setTimeout(function(){
-					fetchPage(nextLink);
-				}, 20000)
-			} else {
-				// 3秒后执行
+			if (html != '') {
 				setTimeout(function(){
 					// 获取基础信息
 					getBaseInfo()
-				}, 20000)
+				}, waitTime)
+			} else {
+				console.log('获取数据为空：1、可能访问对方网站太频繁了，请求被禁止，请到网站上进行验证！2、或者后续已没有数据了')
 			}
 		})
 	}).on('error', function(err) {
@@ -89,20 +108,20 @@ function startRequest(url) {
 }
 
 // 获取基础信息
-var count = 0;
+
 function getBaseInfo() {
 	console.log('filename', filename)
-	var len = maxSingleMsgNub ? maxSingleMsgNub : news_item.length;
+	var len = news_item.length;
 	var baseTitle = '', author = '', bundleId = '', appId = '';
 
 	if (filename == 'android-langrensha') {
 		// 请求基础信息url
-		var detailsUrl = allUrl[count];
+		var detailsUrl = news_item[count][0];
 	} else if (filename == 'ios-langrensha') {
 		// 请求基础信息url
 		// https://aso100.com/app/rank/appid/1126393139/country/cn
 		// https://aso100.com/app/baseinfo/appid/1126393139/country/cn
-		var detailsUrl = allUrl[count].replace(/rank/, 'baseinfo');
+		var detailsUrl = news_item[count][0].replace(/rank/, 'baseinfo');
 	}
 	console.log('detailsUrl', detailsUrl)
 
@@ -166,7 +185,7 @@ function getBaseInfo() {
 			// 请求下载量url
 			if (filename == 'android-langrensha') {
 				// 'https://aso100.com/andapp/downTotal/appid/3387630?_pjax=#container'
-				var downTotalUrl = encodeURI(allUrl[count].replace(/baseinfo/, 'downTotal') + '?_pjax=#container');
+				var downTotalUrl = encodeURI(news_item[count][0].replace(/baseinfo/, 'downTotal') + '?_pjax=#container');
 			} else if (filename == 'ios-langrensha') {
 				var downTotalUrl = '';
 			}
@@ -177,10 +196,11 @@ function getBaseInfo() {
 				writeToexcel(news_item);
 				if (count < len - 1) {
 					count++;
+					writeToTxt(i, count)
 					// 10秒执行一次
 					setTimeout(function(){
-						getBaseInfo(allUrl[count])
-					}, 20000)
+						getBaseInfo(news_item[count][0])
+					}, waitTime)
 					// 写下数据了
 				} else {
 					var x = '';
@@ -197,7 +217,7 @@ function getBaseInfo() {
 			} else {
 				setTimeout(function(){
 					getDownTotal(downTotalUrl, len)
-				}, 20000)
+				}, waitTime)
 			}
 		})
 	})
@@ -214,7 +234,7 @@ function getDownTotal(downTotalUrl, len) {
 		res.on('end', function() {
 			var $$$ = cheerio.load(downTotalNum);
 			if (filename == 'android-langrensha') {
-				totalNum = $$$('.table.rank').find('.rank span').text().trim();
+				var totalNum = $$$('.table.rank').find('.rank span').text().trim();
 			} else if (filename == 'ios-langrensha') {
 
 			}
@@ -222,25 +242,52 @@ function getDownTotal(downTotalUrl, len) {
 
 			console.log('totalNum', totalNum)
 			news_item[count].push(totalNum)
+			if (news_item[count][4] == ' ' && totalNum == ' ') {
+				console.log('bundleId和totalNum都为空，可能访问对方网站太频繁了，请求被禁止，请到网站上进行验证，以便再次爬取数据！')
+				return;
+			}
 			console.log('getDownTotal后news_item = ',news_item)
 			writeToexcel(news_item);
-			if (count < len - 1) {
-				count++;
-				// 10秒执行一次
-				setTimeout(function(){
-					getBaseInfo(allUrl[count])
-				}, 20000)
-			} else {
-				var x = '';
-				console.log('写进html了')
-				x += '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"></head><body>'
-				x += JSON.stringify(news_item)
-				x += '</body></html>'
-				fs.writeFile('./langrensha/'+ filename + '.html', x, 'utf-8', function(err) {
-					if (err) {
-						console.log(err);
+			if (count < (maxSingleMsgNub - 1) ) {
+				if (count < (len - 1)) {
+					count++;
+					writeToTxt(i, count)
+					// 10秒执行一次
+					setTimeout(function(){
+						getBaseInfo(news_item[count][0])
+					}, waitTime)
+				} else {
+					// 第一次拉取20条数据，继续拉取完20条数据的基本信息和下载量之后，第二次继续拉取20-40的数据
+					i = i + 1;
+					writeToTxt(i, count)
+					if (filename == 'android-langrensha') {
+						// 安卓请求地址
+						var nextLink = encodeURI('https://aso100.com/search/searchAndroidMore?page='+ i + '&search='+ searchWord +'&date=2017-05-23');
+					} else if (filename == 'ios-langrensha') {
+						// ios请求地址
+						var nextLink = encodeURI('https://aso100.com/search/searchMore?page='+ i + '&device=iphone&search='+ searchWord +'&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
 					}
-				})
+					if (i < maxpage) {
+						count++;
+						writeToTxt(i, count)
+						console.log('下一次')
+						// 20秒执行一次
+						setTimeout(function(){
+							fetchPage(nextLink);
+						}, waitTime)
+					}
+
+					// var x = '';
+					// console.log('写进html了')
+					// x += '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"></head><body>'
+					// x += JSON.stringify(news_item)
+					// x += '</body></html>'
+					// fs.writeFile('./langrensha/'+ filename + '.html', x, 'utf-8', function(err) {
+					// 	if (err) {
+					// 		console.log(err);
+					// 	}
+					// })
+				}
 			}
 		})
 	})
@@ -251,13 +298,18 @@ function writeToexcel(resData) {
 	// var obj = xlsx.parse(__dirname + '/paiqi.xlsx');
 	// var excelObj = obj[0].data;
 	// console.log(excelObj);
-
-	if (filename == 'android-langrensha') {
-		var finalRes = [['序号', '产品名称', '公司', 'bundleID', '下载量' ]].concat(resData);
-	} else if (filename == 'ios-langrensha') {
-		var finalRes = [['序号', '产品名称', '公司', 'bundleID', 'appId', '下载量' ]].concat(resData);
+	var solveData = JSON.parse(JSON.stringify(resData));
+	// 去除链接
+	for (var i = 0; i < solveData.length; i++) {
+		solveData[i].splice(0, 1);
 	}
-	console.log(finalRes)
+	if (filename == 'android-langrensha') {
+		var finalRes = [['序号', '产品名称', '公司', 'bundleID', '下载量' ]].concat(solveData);
+	} else if (filename == 'ios-langrensha') {
+		var finalRes = [['序号', '产品名称', '公司', 'bundleID', 'appId']].concat(solveData);
+	}
+	console.log('*******************************************************************')
+	// console.log('finalRes = ', finalRes)
 
 	var buffer = xlsx.build([
 	    {
@@ -265,9 +317,27 @@ function writeToexcel(resData) {
 	        data:finalRes
 	    }
 	]);
-	console.log('写进excel了')
+	console.log('第'+ (count + 1) +'条数据写进excel了' + '\n')
 	//将文件内容插入新的文件中
 	fs.writeFileSync('langrensha.xlsx',buffer,{'flag':'w'});
+	// fs.writeFileSync('langrensha-back.xlsx',buffer,{'flag':'w'});
+}
+
+function writeToTxt(i, count, word) {
+	if (!word) {
+		var word = searchWord;
+	}
+	var str = '{"i":'+ i +',"count":'+ count +',"word":"'+ word +'"}';
+	fs.writeFileSync('record.txt', str);
+}
+
+function readFromTxt() {
+	var readTxt = fs.readFileSync('record.txt', 'utf-8');
+	if (readTxt) {
+		return JSON.parse(fs.readFileSync('record.txt', 'utf-8'));
+	} else {
+		return '';
+	}
 }
 
 fetchPage(initialurl);
