@@ -4,16 +4,18 @@ var cheerio = require('cheerio');
 var xlsx = require('node-xlsx');
 
 var maxpage = 10; // 控制可获取的最大页数
-var maxSingleMsgNub = 100;  // 控制可获取的数据条数
+var maxSingleMsgNub = 200;  // 控制可获取的数据条数
 var waitTime = 10000;  // 每一次请求的等待时间
 // writeToTxt(1, 0, '棋牌')
-var searchWord = '五子棋';  // 搜索关键字
+var searchWord = '狼人杀';  // 搜索关键字
 var compareWord = readFromTxt().word ? readFromTxt().word : '狼人杀';
 if (compareWord != searchWord) {
 	writeToTxt(1, 0, searchWord);
 }
 var i = readFromTxt() ? readFromTxt().i : 1; // 控制获取的当前页数，每一页20条数据
 var count = readFromTxt() ? readFromTxt().count : 0;  // 从本程序执行开始获取的new_item的序号
+var androidOrIosSearchDate = '2017-05-25';
+var iosCompareDate = '2017-05-24';
 
 // writeToTxt(i, count)
 // console.log(i)
@@ -43,10 +45,10 @@ var filename = 'android-langrensha'
 // var filename = 'ios-langrensha';
 
 if (filename == 'android-langrensha') {
-	https://aso100.com/search/searchAndroidMore?page=2&search=%E7%8B%BC%E4%BA%BA&date=2017-05-26
-	var initialurl = encodeURI('https://aso100.com/search/searchAndroidMore?page='+ i +'&search='+ searchWord +'&date=2017-05-25')
+	// https://aso100.com/search/searchAndroidMore?page=2&search=%E7%8B%BC%E4%BA%BA&date=2017-05-26
+	var initialurl = encodeURI('https://aso100.com/search/searchAndroidMore?page='+ i +'&search='+ searchWord +'&date=' + androidOrIosSearchDate)
 } else if (filename == 'ios-langrensha') {
-	var initialurl= encodeURI('https://aso100.com/search/searchMore?page='+ i +'&device=iphone&search='+ searchWord +'&country=cn&brand_id=1&kdate=2017-05-23&ydate=2017-05-22')
+	var initialurl= encodeURI('https://aso100.com/search/searchMore?page='+ i +'&device=iphone&search='+ searchWord +'&country=cn&brand_id=1&kdate='+ androidOrIosSearchDate +'&ydate='+ iosCompareDate)
 }
 
 // 加了一层封装
@@ -83,8 +85,8 @@ function startRequest(url) {
 				// 获取详细信息的url
 				var baseinfoUrl = 'https://aso100.com' + $(this).find('.media-heading a').attr('href');
 				if (baseinfoUrl == '') { baseinfoUrl = ' '}
-				console.log('rankNum = ', rankNum)
-				console.log('count = ', count)
+				// console.log('rankNum = ', rankNum)
+				// console.log('count = ', count)
 				if (rankNum > count) {
 					// var simple_item = [rankNum, app_title, app_author, baseinfoUrl]
 					var simple_item = [baseinfoUrl, rankNum, app_title, app_author]
